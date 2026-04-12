@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UJ Kraków – Student Campus Guide</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --radius: 14px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.07);
+      --transition: 0.28s cubic-bezier(.4,0,.2,1);
+    }
+
+    body {
+      font-family: 'DM Sans', 'Segoe UI', sans-serif;
+      background: #ECEAE3;
+      min-height: 100vh;
+      color: #1a1a1a;
+    }
+
+    /* ─── HEADER ─── */
+    .guide-header {
+      background: #111;
+      color: #fff;
+      padding: 22px 32px 0;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+    }
+    .header-top h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.1rem, 3vw, 1.55rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .header-top .sub {
+      font-size: 0.72rem;
+      opacity: 0.5;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ─── LANGUAGE TABS ─── */
+    .lang-tabs {
+      display: flex;
+      gap: 0;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .lang-tab {
+      padding: 14px 22px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.4);
+      border: none;
+      background: none;
+      border-bottom: 3px solid transparent;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .lang-tab:hover { color: rgba(255,255,255,0.8); }
+    .lang-tab.active { color: #fff; }
+    .lang-tab[data-lang="en"].active { border-bottom-color: #C9A227; }
+    .lang-tab[data-lang="ro"].active { border-bottom-color: #FCD116; }
+    .lang-tab[data-lang="cz"].active { border-bottom-color: #D7141A; }
+    .lang-tab[data-lang="sk"].active { border-bottom-color: #EE1C25; }
+
+    /* ─── MAIN CONTENT ─── */
+    .content {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 30px 20px 60px;
+    }
+
+    .lang-section { display: none; }
+    .lang-section.active { display: block; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* ─── FLAG STRIPE ─── */
+    .flag-stripe {
+      height: 6px;
+      border-radius: 3px;
+      margin-bottom: 24px;
+    }
+    .fs-en { background: linear-gradient(90deg, #1B3A6B 33.3%, #C9A227 33.3% 66.6%, #1B3A6B 66.6%); }
+    .fs-ro { background: linear-gradient(90deg, #002B7F 33.3%, #FCD116 33.3% 66.6%, #CE1126 66.6%); }
+    .fs-cz { background: linear-gradient(90deg, #11457E 25%, #fff 25% 50%, #D7141A 50%); }
+    .fs-sk { background: linear-gradient(90deg, #fff 33.3%, #0B4EA2 33.3% 66.6%, #EE1C25 66.6%); }
+
+    /* ─── SECTION CARD ─── */
+    .scard {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 26px 28px;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .scard-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .scard-num {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .scard-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    /* ─── MAP ─── */
+    #map-wrap {
+      width: 100%;
+      height: 370px;
+      border-radius: 11px;
+      overflow: hidden;
+      border: 1px solid #e8e8e8;
+      margin-bottom: 16px;
+    }
+    #campus-map { width: 100%; height: 100%; }
+
+    /* ─── LEGEND ─── */
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-bottom: 14px;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 13px;
+      background: #F8F7F4;
+      border-radius: 9px;
+      font-size: 0.83rem;
+    }
+    .ldot { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ─── STOP HIGHLIGHT ─── */
+    .stop-highlight {
+      background: #FFFBEA;
+      border: 2px solid #F5C518;
+      border-radius: 11px;
+      padding: 13px 16px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    /* ─── TRANSPORT BOX ─── */
+    .transport-box {
+      border-radius: 11px;
+      padding: 16px;
+      margin-top: 0;
+    }
+    .transport-box h4 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #888;
+      margin-bottom: 11px;
+    }
+    .lines { display: flex; flex-wrap: wrap; gap: 8px; }
+    .lbadge {
+      padding: 6px 15px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .ltram { background: #EBF0FF; color: #1B3A8F; }
+    .lbus  { background: #FFF2E5; color: #B84F00; }
+
+    /* ─── TICKET GRID ─── */
+    .ticket-table { margin-top: 4px; }
+    .trow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 15px;
+      border-radius: 9px;
+      margin-bottom: 7px;
+      background: #F8F7F4;
+      font-size: 0.88rem;
+    }
+    .trow.highlight { background: #F0FBF3; }
+    .tname { font-weight: 500; }
+    .tprices { display: flex; gap: 18px; align-items: center; }
+    .pnorm { font-weight: 700; font-size: 0.94rem; }
+    .pred  { font-weight: 600; font-size: 0.83rem; color: #2E7D32; }
+
+    /* ─── BANNERS ─── */
+    .banner-green {
+      background: #EDFBF1; border: 1px solid #A7DDB8;
+      border-radius: 11px; padding: 14px 16px;
+      font-size: 0.88rem; margin-top: 14px; line-height: 1.5;
+    }
+    .banner-orange {
+      background: #FFF8F0; border: 1px solid #FFCC8A;
+      border-radius: 11px; padding: 12px 16px;
+      font-size: 0.84rem; margin-top: 10px; color: #8A3500; line-height: 1.5;
+    }
+
+    /* ─── JAKDOJADE ─── */
+    .jakdojade-card {
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 16px;
+      display: flex; align-items: center; gap: 16px;
+      color: #fff;
+    }
+    .jakdojade-card .jicon {
+      width: 56px; height: 56px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.7rem; flex-shrink: 0;
+    }
+    .jakdojade-card h3 { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 800; }
+    .jakdojade-card p { font-size: 0.8rem; opacity: 0.88; margin-top: 5px; line-height: 1.5; }
+
+    /* ─── APPS GRID ─── */
+    .apps-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px; margin-top: 14px;
+    }
+    .app-card {
+      background: #F8F7F4;
+      border-radius: 11px;
+      padding: 14px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .app-icon {
+      width: 42px; height: 42px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .aname { font-weight: 700; font-size: 0.88rem; }
+    .adesc { font-size: 0.75rem; color: #777; margin-top: 3px; line-height: 1.4; }
+
+    /* ─── EMERGENCY ─── */
+    .emg-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px; margin-top: 14px;
+    }
+    .emg-card {
+      text-align: center; padding: 14px 8px;
+      background: #FFF4F4; border: 1px solid #F5C6C6;
+      border-radius: 11px;
+    }
+    .emg-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.4rem; font-weight: 800; color: #B71C1C;
+    }
+    .emg-lbl { font-size: 0.69rem; color: #999; margin-top: 4px; }
+
+    /* ─── PLACES ─── */
+    .places-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px; margin-top: 12px;
+    }
+    .place-card {
+      background: #F8F7F4; border-radius: 10px;
+      padding: 12px 14px; font-size: 0.84rem;
+    }
+    .place-card strong { display: block; margin-bottom: 2px; }
+    .place-card span { color: #777; font-size: 0.78rem; }
+
+    .info-tip {
+      border-radius: 11px; padding: 14px 16px;
+      margin-top: 14px; font-size: 0.85rem; line-height: 1.55;
+    }
+
+    /* ─── SECTION LABEL ─── */
+    .sec-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #999;
+      margin: 22px 0 10px;
+      display: block;
+    }
+
+    @media (max-width: 540px) {
+      .scard { padding: 18px 16px; }
+      .apps-grid { grid-template-columns: 1fr; }
+      .emg-grid { grid-template-columns: repeat(2, 1fr); }
+      .legend { grid-template-columns: 1fr; }
+      .places-grid { grid-template-columns: 1fr; }
+      #map-wrap { height: 280px; }
+      .lang-tab { padding: 12px 14px; font-size: 0.76rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="guide-header">
+  <div class="header-top">
+    <div>
+      <h1>🎓 UJ Kraków — Student Campus Guide</h1>
+      <div class="sub">Jagiellonian University · Kampus UJ · Ruczaj</div>
+    </div>
+    <div style="font-size:2.2rem">🇵🇱</div>
+  </div>
+  <nav class="lang-tabs">
+    <button class="lang-tab active" data-lang="en" onclick="switchLang('en')">🇬🇧 English</button>
+    <button class="lang-tab" data-lang="ro" onclick="switchLang('ro')">🇷🇴 Română</button>
+    <button class="lang-tab" data-lang="cz" onclick="switchLang('cz')">🇨🇿 Čeština</button>
+    <button class="lang-tab" data-lang="sk" onclick="switchLang('sk')">🇸🇰 Slovenčina</button>
+  </nav>
+</header>
+
+<main class="content">
+
+<!-- ══════════════════════════════════════
+     🇬🇧  ENGLISH
+══════════════════════════════════════ -->
+<section class="lang-section active" id="sec-en">
+  <div class="flag-stripe fs-en"></div>
+
+  <!-- PART 1 – MAP -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#1B3A6B;color:#fff">1</div>
+      <div class="scard-title" style="color:#1B3A6B">📍 Campus Map & Getting Here</div>
+    </div>
+
+    <div id="map-wrap"><div id="campus-map"></div></div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background:#1B3A8F"></div><div><strong>WZIKS</strong> · Łojasiewicza 4</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#2E7D32"></div><div><strong>WMiI</strong> · Łojasiewicza 6</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#6A1B9A"></div><div><strong>WChUj</strong> · Gronostajowa 2</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#C62828"></div><div><strong>Norymberska</strong> · Tram/Bus Stop 🚊</div></div>
+    </div>
+
+    <div class="stop-highlight">🚊 <span>Norymberska — <em>Your stop!</em> &nbsp;Walk ~10 min to campus</span></div>
+
+    <div class="transport-box" style="background:#EEF3FF">
+      <h4>Lines stopping at Norymberska</h4>
+      <div class="lines">
+        <span class="lbadge ltram">🚊 11</span>
+        <span class="lbadge ltram">🚊 17</span>
+        <span class="lbadge ltram">🚊 18</span>
+        <span class="lbadge ltram">🚊 52</span>
+        <span class="lbadge ltram">🚊 62</span>
+        <span class="lbadge lbus">🌙 662 night</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 2 – TICKETS -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#C9A227;color:#fff">2</div>
+      <div class="scard-title" style="color:#1B3A6B">🎫 Tickets & Fares</div>
+    </div>
+    <p style="font-size:0.8rem;color:#888;margin-bottom:14px">Prices valid from <strong>2 March 2026</strong> · Green = reduced 50% fare &nbsp;↓</p>
+
+    <div class="ticket-table">
+      <div class="trow"><span class="tname">Single ride</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">15 minutes</span><div class="tprices"><span class="pnorm">4 PLN</span><span class="pred">↓ 2 PLN</span></div></div>
+      <div class="trow"><span class="tname">30 minutes</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">60 minutes</span><div class="tprices"><span class="pnorm">8 PLN</span><span class="pred">↓ 4 PLN</span></div></div>
+      <div class="trow"><span class="tname">90 minutes</span><div class="tprices"><span class="pnorm">9 PLN</span><span class="pred">↓ 4,50 PLN</span></div></div>
+      <div class="trow"><span class="tname">24 hours – zone I</span><div class="tprices"><span class="pnorm">20 PLN</span><span class="pred">↓ 10 PLN</span></div></div>
+      <div class="trow"><span class="tname">Monthly pass – zone I</span><div class="tprices"><span class="pnorm">109 PLN</span><span class="pred">↓ 54,50 PLN</span></div></div>
+      <div class="trow highlight"><span class="tname">🎓 Annual student pass (Karta Krakowska)</span><div class="tprices"><span class="pnorm" style="color:#2E7D32">470 PLN / year</span></div></div>
+    </div>
+
+    <div class="banner-green">🎓 <strong>Student discount (50% off):</strong> Available to students up to 26 years old. Show a valid ISIC card or your university student ID (legitymacja) when asked by an inspector.</div>
+    <div class="banner-orange">⚠️ <strong>Travelling without a valid ticket:</strong> Fine of <strong>400 PLN</strong>. Validate your ticket immediately after boarding!</div>
+
+    <div class="jakdojade-card" style="background:linear-gradient(135deg,#0055A5,#007FE0)">
+      <div class="jicon">🗺️</div>
+      <div>
+        <h3>JakDoJadę App</h3>
+        <p>Poland's #1 public transport planner. Real-time timetables, route planning & mobile ticket purchase. Works in Kraków and all major Polish cities. Search <strong>"jakdojade"</strong> on iOS or Android.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 3 – USEFUL INFO -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#1B3A6B;color:#fff">3</div>
+      <div class="scard-title" style="color:#1B3A6B">ℹ️ Useful Info & Apps</div>
+    </div>
+
+    <span class="sec-label">📱 Recommended apps</span>
+    <div class="apps-grid">
+      <div class="app-card"><div class="app-icon" style="background:#E3F2FD">🗺️</div><div><div class="aname">JakDoJadę</div><div class="adesc">Public transport planner for Kraków & all Poland</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#F3E5F5">🚖</div><div><div class="aname">Bolt / Uber</div><div class="adesc">Affordable ride-hailing in Kraków</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🌍</div><div><div class="aname">Google Maps</div><div class="adesc">Navigation & walking routes</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FFF8E1">💳</div><div><div class="aname">Revolut</div><div class="adesc">Easy currency exchange & PLN payments</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FCE4EC">🛒</div><div><div class="aname">Żappka</div><div class="adesc">Żabka convenience store – deals & coupons</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🍕</div><div><div class="aname">Glovo / Wolt</div><div class="adesc">Food delivery, active in Kraków</div></div></div>
+    </div>
+
+    <span class="sec-label">🚨 Emergency numbers</span>
+    <div class="emg-grid">
+      <div class="emg-card"><div class="emg-num">112</div><div class="emg-lbl">Universal Emergency</div></div>
+      <div class="emg-card"><div class="emg-num">997</div><div class="emg-lbl">Police</div></div>
+      <div class="emg-card"><div class="emg-num">998</div><div class="emg-lbl">Fire Brigade</div></div>
+      <div class="emg-card"><div class="emg-num">999</div><div class="emg-lbl">Ambulance</div></div>
+    </div>
+
+    <span class="sec-label">📍 Must-see in Kraków</span>
+    <div class="places-grid">
+      <div class="place-card"><strong>🏰 Wawel Castle</strong><span>Royal castle on the Vistula River</span></div>
+      <div class="place-card"><strong>🏛️ Rynek Główny</strong><span>Main Market Square – heart of the city</span></div>
+      <div class="place-card"><strong>🕍 Kazimierz</strong><span>Jewish quarter, cafes & vibrant nightlife</span></div>
+      <div class="place-card"><strong>📚 Old Town</strong><span>UNESCO World Heritage Site</span></div>
+    </div>
+
+    <div class="info-tip" style="background:#EEF3FF; border:1px solid #C5D3F5">
+      💡 <strong>Student tips:</strong> Always carry your student ID — it unlocks 50% discounts on transport, museums and some cinemas. Kraków has a lively student scene centred around <strong>Kazimierz</strong> and <strong>Nowe Miasto</strong>. The main UJ campus cafeteria offers subsidised meals with a valid USOS account.
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     🇷🇴  ROMÂNĂ
+══════════════════════════════════════ -->
+<section class="lang-section" id="sec-ro">
+  <div class="flag-stripe fs-ro"></div>
+
+  <!-- PART 1 – MAP -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#002B7F;color:#fff">1</div>
+      <div class="scard-title" style="color:#002B7F">📍 Harta Campusului & Transport</div>
+    </div>
+
+    <div style="background:#FFF9E6;border-radius:11px;padding:13px 16px;font-size:0.88rem;margin-bottom:14px">
+      🗺️ Harta interactivă de mai jos arată clădirile facultăților și stația de tramvai cea mai apropiată.
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background:#1B3A8F"></div><div><strong>WZIKS</strong> · Łojasiewicza 4</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#2E7D32"></div><div><strong>WMiI</strong> · Łojasiewicza 6</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#6A1B9A"></div><div><strong>WChUj</strong> · Gronostajowa 2</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#CE1126"></div><div><strong>Norymberska</strong> · Stația noastră 🚊</div></div>
+    </div>
+
+    <div class="stop-highlight" style="border-color:#FCD116;background:#FFFBEA">🚊 <span>Norymberska — <em>Stația NOASTRĂ!</em> &nbsp;~10 min pe jos până la campus</span></div>
+
+    <div class="transport-box" style="background:#FFFDF0">
+      <h4>Linii care opresc la Norymberska</h4>
+      <div class="lines">
+        <span class="lbadge" style="background:#EDF0FF;color:#002B7F">🚊 11</span>
+        <span class="lbadge" style="background:#EDF0FF;color:#002B7F">🚊 17</span>
+        <span class="lbadge" style="background:#EDF0FF;color:#002B7F">🚊 18</span>
+        <span class="lbadge" style="background:#EDF0FF;color:#002B7F">🚊 52</span>
+        <span class="lbadge" style="background:#EDF0FF;color:#002B7F">🚊 62</span>
+        <span class="lbadge lbus">🌙 662 nocturn</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 2 – BILETE -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#FCD116;color:#002B7F">2</div>
+      <div class="scard-title" style="color:#002B7F">🎫 Bilete & Tarife</div>
+    </div>
+    <p style="font-size:0.8rem;color:#888;margin-bottom:14px">Prețuri valabile de la <strong>2 martie 2026</strong> · Verde = tarif redus 50% ↓</p>
+
+    <div class="ticket-table">
+      <div class="trow"><span class="tname">O călătorie</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">15 minute</span><div class="tprices"><span class="pnorm">4 PLN</span><span class="pred">↓ 2 PLN</span></div></div>
+      <div class="trow"><span class="tname">30 minute</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">60 minute</span><div class="tprices"><span class="pnorm">8 PLN</span><span class="pred">↓ 4 PLN</span></div></div>
+      <div class="trow"><span class="tname">90 minute</span><div class="tprices"><span class="pnorm">9 PLN</span><span class="pred">↓ 4,50 PLN</span></div></div>
+      <div class="trow"><span class="tname">24 ore – zona I</span><div class="tprices"><span class="pnorm">20 PLN</span><span class="pred">↓ 10 PLN</span></div></div>
+      <div class="trow"><span class="tname">Abonament lunar – zona I</span><div class="tprices"><span class="pnorm">109 PLN</span><span class="pred">↓ 54,50 PLN</span></div></div>
+      <div class="trow highlight"><span class="tname">🎓 Abonament studențesc anual (Karta Krakowska)</span><div class="tprices"><span class="pnorm" style="color:#2E7D32">470 PLN / an</span></div></div>
+    </div>
+
+    <div class="banner-green">🎓 <strong>Reducere studenți (50%):</strong> Disponibilă studenților până la 26 de ani. Prezentați cardul ISIC sau legitimația studențească universitară valabilă la control.</div>
+    <div class="banner-orange">⚠️ <strong>Călătorie fără bilet valid:</strong> Amendă de <strong>400 PLN</strong>. Validați biletul imediat după urcare!</div>
+
+    <div class="jakdojade-card" style="background:linear-gradient(135deg,#002B7F,#1A5CD6)">
+      <div class="jicon">🗺️</div>
+      <div>
+        <h3>Aplicația JakDoJadę</h3>
+        <p>Nr. 1 în Polonia pentru planificarea transportului public. Ore reale, planificarea rutelor și cumpărarea biletelor mobile. Căutați <strong>"jakdojade"</strong> pe iOS sau Android.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 3 – INFO -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#CE1126;color:#fff">3</div>
+      <div class="scard-title" style="color:#002B7F">ℹ️ Informații Utile & Aplicații</div>
+    </div>
+
+    <span class="sec-label">📱 Aplicații recomandate</span>
+    <div class="apps-grid">
+      <div class="app-card"><div class="app-icon" style="background:#EDF0FF">🗺️</div><div><div class="aname">JakDoJadę</div><div class="adesc">Transport public – Kraków și toată Polonia</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#F3E5F5">🚖</div><div><div class="aname">Bolt / Uber</div><div class="adesc">Taxi accesibil în Kraków</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🌍</div><div><div class="aname">Google Maps</div><div class="adesc">Navigare și rute pietonale</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FFFDE7">💳</div><div><div class="aname">Revolut</div><div class="adesc">Schimb valutar facil & plăți în PLN</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FCE4EC">🛒</div><div><div class="aname">Żappka</div><div class="adesc">Magazin Żabka – reduceri și cupoane</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🍕</div><div><div class="aname">Glovo / Wolt</div><div class="adesc">Livrare mâncare în Kraków</div></div></div>
+    </div>
+
+    <span class="sec-label">🚨 Numere de urgență</span>
+    <div class="emg-grid">
+      <div class="emg-card"><div class="emg-num">112</div><div class="emg-lbl">Urgențe generale</div></div>
+      <div class="emg-card"><div class="emg-num">997</div><div class="emg-lbl">Poliție</div></div>
+      <div class="emg-card"><div class="emg-num">998</div><div class="emg-lbl">Pompieri</div></div>
+      <div class="emg-card"><div class="emg-num">999</div><div class="emg-lbl">Ambulanță</div></div>
+    </div>
+
+    <span class="sec-label">📍 Obiective obligatorii în Kraków</span>
+    <div class="places-grid">
+      <div class="place-card"><strong>🏰 Castelul Wawel</strong><span>Castelul regal pe râul Vistula</span></div>
+      <div class="place-card"><strong>🏛️ Rynek Główny</strong><span>Piața Principală – inima orașului</span></div>
+      <div class="place-card"><strong>🕍 Kazimierz</strong><span>Cartier evreiesc, cafenele & viață de noapte</span></div>
+      <div class="place-card"><strong>📚 Orașul Vechi</strong><span>Sit UNESCO Patrimoniul Mondial</span></div>
+    </div>
+
+    <div class="info-tip" style="background:#FFFDE7;border:1px solid #FDD835">
+      💡 <strong>Sfaturi pentru studenți:</strong> Aveți mereu la voi legitimația studențească — vă oferă reduceri de 50% la transport, muzee și unele cinematografe. Viața studențească din Kraków se concentrează în <strong>Kazimierz</strong>. Cantina UJ oferă mese subvenționate cu cont USOS activ.
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     🇨🇿  ČEŠTINA
+══════════════════════════════════════ -->
+<section class="lang-section" id="sec-cz">
+  <div class="flag-stripe fs-cz"></div>
+
+  <!-- PART 1 – MAP -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#D7141A;color:#fff">1</div>
+      <div class="scard-title" style="color:#11457E">📍 Mapa Kampusu & Jak Se Dostat</div>
+    </div>
+
+    <div style="background:#FFF0F0;border-radius:11px;padding:13px 16px;font-size:0.88rem;margin-bottom:14px">
+      🗺️ Interaktivní mapa níže zobrazuje budovy fakult a nejbližší zastávku tramvaje.
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background:#11457E"></div><div><strong>WZIKS</strong> · Łojasiewicza 4</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#2E7D32"></div><div><strong>WMiI</strong> · Łojasiewicza 6</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#6A1B9A"></div><div><strong>WChUj</strong> · Gronostajowa 2</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#D7141A"></div><div><strong>Norymberska</strong> · Naše zastávka 🚊</div></div>
+    </div>
+
+    <div class="stop-highlight" style="border-color:#D7141A;background:#FFF5F5">🚊 <span>Norymberska — <em>Naše zastávka!</em> &nbsp;~10 min pěšky na kampus</span></div>
+
+    <div class="transport-box" style="background:#FFF0F0">
+      <h4>Linky zastavující na Norymberska</h4>
+      <div class="lines">
+        <span class="lbadge" style="background:#FFE8E8;color:#D7141A">🚊 11</span>
+        <span class="lbadge" style="background:#FFE8E8;color:#D7141A">🚊 17</span>
+        <span class="lbadge" style="background:#FFE8E8;color:#D7141A">🚊 18</span>
+        <span class="lbadge" style="background:#FFE8E8;color:#D7141A">🚊 52</span>
+        <span class="lbadge" style="background:#FFE8E8;color:#D7141A">🚊 62</span>
+        <span class="lbadge lbus">🌙 662 noční</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 2 – JÍZDENKY -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#11457E;color:#fff">2</div>
+      <div class="scard-title" style="color:#11457E">🎫 Jízdenky & Ceny</div>
+    </div>
+    <p style="font-size:0.8rem;color:#888;margin-bottom:14px">Ceny platné od <strong>2. března 2026</strong> · Zelená = zlevněná jízdenka 50% ↓</p>
+
+    <div class="ticket-table">
+      <div class="trow"><span class="tname">Jednorázová jízdenka</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">15 minut</span><div class="tprices"><span class="pnorm">4 PLN</span><span class="pred">↓ 2 PLN</span></div></div>
+      <div class="trow"><span class="tname">30 minut</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">60 minut</span><div class="tprices"><span class="pnorm">8 PLN</span><span class="pred">↓ 4 PLN</span></div></div>
+      <div class="trow"><span class="tname">90 minut</span><div class="tprices"><span class="pnorm">9 PLN</span><span class="pred">↓ 4,50 PLN</span></div></div>
+      <div class="trow"><span class="tname">24 hodin – zóna I</span><div class="tprices"><span class="pnorm">20 PLN</span><span class="pred">↓ 10 PLN</span></div></div>
+      <div class="trow"><span class="tname">Měsíční jízdenka – zóna I</span><div class="tprices"><span class="pnorm">109 PLN</span><span class="pred">↓ 54,50 PLN</span></div></div>
+      <div class="trow highlight"><span class="tname">🎓 Roční studentská jízdenka (Karta Krakowska)</span><div class="tprices"><span class="pnorm" style="color:#2E7D32">470 PLN / rok</span></div></div>
+    </div>
+
+    <div class="banner-green">🎓 <strong>Studentská sleva (50%):</strong> Pro studenty do 26 let. Při kontrole ukažte platný průkaz ISIC nebo studentský průkaz z vaší univerzity.</div>
+    <div class="banner-orange">⚠️ <strong>Jízda bez platné jízdenky:</strong> Pokuta <strong>400 PLN</strong>. Zkompostujte jízdenku ihned po nástupu do vozidla!</div>
+
+    <div class="jakdojade-card" style="background:linear-gradient(135deg,#11457E,#1A72C8)">
+      <div class="jicon">🗺️</div>
+      <div>
+        <h3>Aplikace JakDoJadę</h3>
+        <p>Nejlepší polská aplikace pro plánování MHD. Jízdní řády v reálném čase, plánování tras a nákup mobilních jízdenek. Hledejte <strong>"jakdojade"</strong> na iOS nebo Android.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 3 – INFO -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#D7141A;color:#fff">3</div>
+      <div class="scard-title" style="color:#11457E">ℹ️ Užitečné Info & Aplikace</div>
+    </div>
+
+    <span class="sec-label">📱 Doporučené aplikace</span>
+    <div class="apps-grid">
+      <div class="app-card"><div class="app-icon" style="background:#FFE8E8">🗺️</div><div><div class="aname">JakDoJadę</div><div class="adesc">MHD v Krakově a po celém Polsku</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#F3E5F5">🚖</div><div><div class="aname">Bolt / Uber</div><div class="adesc">Dostupné taxi v Krakově</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🌍</div><div><div class="aname">Google Maps</div><div class="adesc">Navigace a pěší trasy</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FFF8E1">💳</div><div><div class="aname">Revolut</div><div class="adesc">Výměna měn & platby v PLN</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FCE4EC">🛒</div><div><div class="aname">Żappka</div><div class="adesc">Obchody Żabka – slevy a kupóny</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🍕</div><div><div class="aname">Glovo / Wolt</div><div class="adesc">Donáška jídla v Krakově</div></div></div>
+    </div>
+
+    <span class="sec-label">🚨 Tísňová čísla</span>
+    <div class="emg-grid">
+      <div class="emg-card"><div class="emg-num">112</div><div class="emg-lbl">Tísňová linka</div></div>
+      <div class="emg-card"><div class="emg-num">997</div><div class="emg-lbl">Policie</div></div>
+      <div class="emg-card"><div class="emg-num">998</div><div class="emg-lbl">Hasiči</div></div>
+      <div class="emg-card"><div class="emg-num">999</div><div class="emg-lbl">Záchranná sl.</div></div>
+    </div>
+
+    <span class="sec-label">📍 Co navštívit v Krakově</span>
+    <div class="places-grid">
+      <div class="place-card"><strong>🏰 Hrad Wawel</strong><span>Královský hrad na řece Visle</span></div>
+      <div class="place-card"><strong>🏛️ Rynek Główny</strong><span>Hlavní náměstí – srdce města</span></div>
+      <div class="place-card"><strong>🕍 Kazimierz</strong><span>Židovská čtvrť, kavárny & noční život</span></div>
+      <div class="place-card"><strong>📚 Staré Město</strong><span>Lokalita světového dědictví UNESCO</span></div>
+    </div>
+
+    <div class="info-tip" style="background:#FFF0F0;border:1px solid #FFCDD2">
+      💡 <strong>Tipy pro studenty:</strong> Mějte vždy u sebe studentský průkaz — dává vám 50% slevy na MHD, muzea a některá kina. Krakovský studentský život se soustředí v <strong>Kazimierzi</strong>. Kantýna UJ nabízí dotované obědy s aktivním účtem USOS.
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     🇸🇰  SLOVENČINA
+══════════════════════════════════════ -->
+<section class="lang-section" id="sec-sk">
+  <div class="flag-stripe fs-sk"></div>
+
+  <!-- PART 1 – MAP -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#0B4EA2;color:#fff">1</div>
+      <div class="scard-title" style="color:#0B4EA2">📍 Mapa Kampusu & Ako Sa Dostať</div>
+    </div>
+
+    <div style="background:#EEF4FF;border-radius:11px;padding:13px 16px;font-size:0.88rem;margin-bottom:14px">
+      🗺️ Interaktívna mapa nižšie zobrazuje budovy fakúlt a najbližšiu zastávku električky.
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="ldot" style="background:#0B4EA2"></div><div><strong>WZIKS</strong> · Łojasiewicza 4</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#2E7D32"></div><div><strong>WMiI</strong> · Łojasiewicza 6</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#6A1B9A"></div><div><strong>WChUj</strong> · Gronostajowa 2</div></div>
+      <div class="legend-item"><div class="ldot" style="background:#EE1C25"></div><div><strong>Norymberska</strong> · Naša zastávka 🚊</div></div>
+    </div>
+
+    <div class="stop-highlight" style="border-color:#0B4EA2;background:#EEF4FF">🚊 <span>Norymberska — <em>Naša zastávka!</em> &nbsp;~10 min pešo na kampus</span></div>
+
+    <div class="transport-box" style="background:#EEF4FF">
+      <h4>Linky zastavujúce na Norymberska</h4>
+      <div class="lines">
+        <span class="lbadge" style="background:#D8E8FF;color:#0B4EA2">🚊 11</span>
+        <span class="lbadge" style="background:#D8E8FF;color:#0B4EA2">🚊 17</span>
+        <span class="lbadge" style="background:#D8E8FF;color:#0B4EA2">🚊 18</span>
+        <span class="lbadge" style="background:#D8E8FF;color:#0B4EA2">🚊 52</span>
+        <span class="lbadge" style="background:#D8E8FF;color:#0B4EA2">🚊 62</span>
+        <span class="lbadge lbus">🌙 662 nočná</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 2 – LÍSTKY -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#EE1C25;color:#fff">2</div>
+      <div class="scard-title" style="color:#0B4EA2">🎫 Cestovné Lístky & Ceny</div>
+    </div>
+    <p style="font-size:0.8rem;color:#888;margin-bottom:14px">Ceny platné od <strong>2. marca 2026</strong> · Zelená = zľavnený lístok 50% ↓</p>
+
+    <div class="ticket-table">
+      <div class="trow"><span class="tname">Jednorázový lístok</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">15 minút</span><div class="tprices"><span class="pnorm">4 PLN</span><span class="pred">↓ 2 PLN</span></div></div>
+      <div class="trow"><span class="tname">30 minút</span><div class="tprices"><span class="pnorm">6 PLN</span><span class="pred">↓ 3 PLN</span></div></div>
+      <div class="trow"><span class="tname">60 minút</span><div class="tprices"><span class="pnorm">8 PLN</span><span class="pred">↓ 4 PLN</span></div></div>
+      <div class="trow"><span class="tname">90 minút</span><div class="tprices"><span class="pnorm">9 PLN</span><span class="pred">↓ 4,50 PLN</span></div></div>
+      <div class="trow"><span class="tname">24 hodín – zóna I</span><div class="tprices"><span class="pnorm">20 PLN</span><span class="pred">↓ 10 PLN</span></div></div>
+      <div class="trow"><span class="tname">Mesačný lístok – zóna I</span><div class="tprices"><span class="pnorm">109 PLN</span><span class="pred">↓ 54,50 PLN</span></div></div>
+      <div class="trow highlight"><span class="tname">🎓 Ročný študentský lístok (Karta Krakowska)</span><div class="tprices"><span class="pnorm" style="color:#2E7D32">470 PLN / rok</span></div></div>
+    </div>
+
+    <div class="banner-green">🎓 <strong>Študentská zľava (50%):</strong> Pre študentov do 26 rokov. Pri kontrole ukážte platný preukaz ISIC alebo študentský preukaz z vašej univerzity.</div>
+    <div class="banner-orange">⚠️ <strong>Jazda bez platného lístka:</strong> Pokuta <strong>400 PLN</strong>. Okompostujte lístok ihneď po nastúpení do vozidla!</div>
+
+    <div class="jakdojade-card" style="background:linear-gradient(135deg,#0B4EA2,#1568D6)">
+      <div class="jicon">🗺️</div>
+      <div>
+        <h3>Aplikácia JakDoJadę</h3>
+        <p>Najlepšia poľská aplikácia pre plánovanie MHD. Cestovné poriadky v reálnom čase, plánovanie trás a nákup mobilných lístkov. Hľadajte <strong>"jakdojade"</strong> na iOS alebo Android.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 3 – INFO -->
+  <div class="scard">
+    <div class="scard-header">
+      <div class="scard-num" style="background:#0B4EA2;color:#fff">3</div>
+      <div class="scard-title" style="color:#0B4EA2">ℹ️ Užitočné Info & Aplikácie</div>
+    </div>
+
+    <span class="sec-label">📱 Odporúčané aplikácie</span>
+    <div class="apps-grid">
+      <div class="app-card"><div class="app-icon" style="background:#D8E8FF">🗺️</div><div><div class="aname">JakDoJadę</div><div class="adesc">MHD v Krakowe a po celom Poľsku</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#F3E5F5">🚖</div><div><div class="aname">Bolt / Uber</div><div class="adesc">Dostupné taxi v Krakowe</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🌍</div><div><div class="aname">Google Maps</div><div class="adesc">Navigácia a pešie trasy</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FFF8E1">💳</div><div><div class="aname">Revolut</div><div class="adesc">Výmena mien & platby v PLN</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#FCE4EC">🛒</div><div><div class="aname">Żappka</div><div class="adesc">Obchody Żabka – zľavy a kupóny</div></div></div>
+      <div class="app-card"><div class="app-icon" style="background:#E8F5E9">🍕</div><div><div class="aname">Glovo / Wolt</div><div class="adesc">Donáška jedla v Krakowe</div></div></div>
+    </div>
+
+    <span class="sec-label">🚨 Tiesňové čísla</span>
+    <div class="emg-grid">
+      <div class="emg-card"><div class="emg-num">112</div><div class="emg-lbl">Tiesňová linka</div></div>
+      <div class="emg-card"><div class="emg-num">997</div><div class="emg-lbl">Polícia</div></div>
+      <div class="emg-card"><div class="emg-num">998</div><div class="emg-lbl">Hasiči</div></div>
+      <div class="emg-card"><div class="emg-num">999</div><div class="emg-lbl">Záchranná zl.</div></div>
+    </div>
+
+    <span class="sec-label">📍 Čo navštíviť v Krakowe</span>
+    <div class="places-grid">
+      <div class="place-card"><strong>🏰 Hrad Wawel</strong><span>Kráľovský hrad na rieke Visle</span></div>
+      <div class="place-card"><strong>🏛️ Rynek Główny</strong><span>Hlavné námestie – srdce mesta</span></div>
+      <div class="place-card"><strong>🕍 Kazimierz</strong><span>Židovská štvrť, kaviarne & nočný život</span></div>
+      <div class="place-card"><strong>📚 Staré Mesto</strong><span>Lokalita svetového dedičstva UNESCO</span></div>
+    </div>
+
+    <div class="info-tip" style="background:#EEF4FF;border:1px solid #B3CCEE">
+      💡 <strong>Tipy pre študentov:</strong> Noste vždy pri sebe študentský preukaz — dáva vám 50% zľavy na MHD, múzeá a niektoré kiná. Krakovský študentský život sa sústreďuje v <strong>Kazimierzi</strong>. Jedáleň UJ ponúka dotované obedy s aktívnym účtom USOS.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script>
+  // ─── Language switcher ───
+  function switchLang(lang) {
+    document.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.lang-section').forEach(s => s.classList.remove('active'));
+    document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+    document.getElementById('sec-' + lang).classList.add('active');
+
+    // Move map to new section's placeholder if it exists
+    const mw = document.getElementById('map-wrap');
+    const target = document.querySelector(`#sec-${lang} .scard`);
+    if (target && !target.contains(mw)) {
+      // Insert map after the scard-header
+      const header = target.querySelector('.scard-header');
+      header.insertAdjacentElement('afterend', mw);
+    }
+    setTimeout(() => { if (window._map) window._map.invalidateSize(); }, 120);
+  }
+
+  // ─── Leaflet Map ───
+  window.addEventListener('load', function () {
+    const map = L.map('campus-map', {
+      center: [50.0301, 19.9096],
+      zoom: 16,
+      zoomControl: true,
+      scrollWheelZoom: false
+    });
+    window._map = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    // ─── Custom marker factory ───
+    function circleIcon(color, label) {
+      return L.divIcon({
+        className: '',
+        html: `<div style="
+          width:36px;height:36px;background:${color};
+          border-radius:50%;border:3px solid #fff;
+          box-shadow:0 2px 8px rgba(0,0,0,0.3);
+          display:flex;align-items:center;justify-content:center;
+          font-size:14px;font-weight:800;color:#fff;
+          font-family:'Syne',sans-serif;
+          ">${label}</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        popupAnchor: [0, -20]
+      });
+    }
+
+    // Stop icon
+    function stopIcon() {
+      return L.divIcon({
+        className: '',
+        html: `<div style="
+          background:#C62828;border-radius:50%;
+          width:42px;height:42px;border:3px solid #fff;
+          box-shadow:0 2px 10px rgba(0,0,0,0.35);
+          display:flex;align-items:center;justify-content:center;
+          font-size:20px;
+          ">🚊</div>`,
+        iconSize: [42, 42],
+        iconAnchor: [21, 21],
+        popupAnchor: [0, -24]
+      });
+    }
+
+    // ─── Markers ───
+    L.marker([50.029910, 19.908663], { icon: circleIcon('#1B3A8F', 'W') })
+      .addTo(map)
+      .bindPopup('<b>WZIKS</b><br>Wydział Zarządzania i Komunikacji Społecznej<br><small>ul. Łojasiewicza 4</small>');
+
+    L.marker([50.030627, 19.907034], { icon: circleIcon('#2E7D32', 'M') })
+      .addTo(map)
+      .bindPopup('<b>WMiI</b><br>Wydział Matematyki i Informatyki<br><small>ul. Łojasiewicza 6</small>');
+
+    L.marker([50.029195, 19.907229], { icon: circleIcon('#6A1B9A', 'C') })
+      .addTo(map)
+      .bindPopup('<b>WChUj</b><br>Wydział Chemii UJ<br><small>ul. Gronostajowa 2</small>');
+
+    L.marker([50.029875, 19.912214], { icon: stopIcon() })
+      .addTo(map)
+      .bindPopup(`
+        <b>🚊 Norymberska</b><br>
+        <em>Nasz przystanek / Our Stop</em><br>
+        <small style="color:#666">Tramwaje: 11, 17, 18, 52, 62<br>Nocny autobus: 662</small>
+      `);
+
+    // Walking path suggestion (dashed line)
+    const pathCoords = [
+      [50.029875, 19.912214],
+      [50.029875, 19.910500],
+      [50.029910, 19.908663]
+    ];
+    L.polyline(pathCoords, {
+      color: '#F5A623', weight: 3, dashArray: '7, 7', opacity: 0.8
+    }).addTo(map).bindPopup('~10 min walk to WMiI');
+  });
+</script>
+
+</body>
+</html>
